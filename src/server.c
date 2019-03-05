@@ -59,8 +59,20 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     // IMPLEMENT ME! //
     ///////////////////
 
+    int length = snprintf(response, max_response_size, "%s\n"
+            "Connection: close\n"
+            "Content-Length: %d\n"
+            "Content-Type: %s\n"
+            "\n"
+            "%s",
+            header, content_length, content_type, body
+        );
+
     // Send it all!
-    int rv = send(fd, response, response_length, 0);
+    int rv = send(fd, response, length, 0);
+
+    printf("%s\n", response); // send()
+
 
     if (rv < 0) {
         perror("send");
@@ -73,20 +85,20 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 /**
  * Send a /d20 endpoint response
  */
-void get_d20(int fd)
-{
-    // Generate a random number between 1 and 20 inclusive
+// void get_d20(int fd)
+// {
+//     // Generate a random number between 1 and 20 inclusive
     
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+//     ///////////////////
+//     // IMPLEMENT ME! //
+//     ///////////////////
 
-    // Use send_response() to send it back as text/plain data
+//     // Use send_response() to send it back as text/plain data
 
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
-}
+//     ///////////////////
+//     // IMPLEMENT ME! //
+//     ///////////////////
+// }
 
 /**
  * Send a 404 response
@@ -117,25 +129,25 @@ void resp_404(int fd)
 /**
  * Read and return a file from disk or cache
  */
-void get_file(int fd, struct cache *cache, char *request_path)
-{
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
-}
+// void get_file(int fd, struct cache *cache, char *request_path)
+// {
+//     ///////////////////
+//     // IMPLEMENT ME! //
+//     ///////////////////
+// }
 
-/**
- * Search for the end of the HTTP header
- * 
- * "Newlines" in HTTP can be \r\n (carriage return followed by newline) or \n
- * (newline) or \r (carriage return).
- */
-char *find_start_of_body(char *header)
-{
-    ///////////////////
-    // IMPLEMENT ME! // (Stretch)
-    ///////////////////
-}
+// /**
+//  * Search for the end of the HTTP header
+//  * 
+//  * "Newlines" in HTTP can be \r\n (carriage return followed by newline) or \n
+//  * (newline) or \r (carriage return).
+//  */
+// char *find_start_of_body(char *header)
+// {
+//     ///////////////////
+//     // IMPLEMENT ME! // (Stretch)
+//     ///////////////////
+// }
 
 /**
  * Handle HTTP request and send response
@@ -157,6 +169,18 @@ void handle_http_request(int fd, struct cache *cache)
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
+
+    // char *s = "GET /foobar HTTP/1.1\nHost: www.example.com\nConnection: close\nX-Header: whatever";
+
+    // char method[200];
+    // char path[8192];
+
+    // sscanf(request, "%s %s", method, path);
+
+    // printf("method: \"%s\"\n", method);
+    // printf("path: \"%s\"\n", path);
+
+    resp_404(fd);
 
     // Read the three components of the first request line
 
