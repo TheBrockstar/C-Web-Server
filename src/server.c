@@ -33,6 +33,7 @@
 #include "file.h"
 #include "mime.h"
 #include "cache.h"
+#include <time.h>
 
 #define PORT "3490"  // the port users will be connecting to
 
@@ -87,20 +88,23 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 /**
  * Send a /d20 endpoint response
  */
-// void get_d20(int fd)
-// {
-//     // Generate a random number between 1 and 20 inclusive
-    
-//     ///////////////////
-//     // IMPLEMENT ME! //
-//     ///////////////////
+void get_d20(int fd)
+{
+    // Generate a random number between 1 and 20 inclusive
+    char randstr[8];
+    int random = (rand() % 20) + 1;
 
-//     // Use send_response() to send it back as text/plain data
+    sprintf(randstr, "%d", random);
+    ///////////////////
+    // IMPLEMENT ME! //
+    ///////////////////
 
-//     ///////////////////
-//     // IMPLEMENT ME! //
-//     ///////////////////
-// }
+    // Use send_response() to send it back as text/plain data
+    send_response(fd, "HTTP/1.1 200 OK", "text/plain", randstr, strlen(randstr));
+    ///////////////////
+    // IMPLEMENT ME! //
+    ///////////////////
+}
 
 /**
  * Send a 404 response
@@ -207,8 +211,11 @@ void handle_http_request(int fd, struct cache *cache)
     // If GET, handle the get endpoints
 
     if (strcmp(method, "GET") == 0) {
-        get_file(fd, cache, path);
- 
+        if (strcmp(path, "/d20") == 0 || strcmp(path, "/D20") == 0) {
+            get_d20(fd);
+        } else {
+            get_file(fd, cache, path);
+        }
     } 
 
     //    Check if it's /d20 and handle that special case
@@ -223,6 +230,9 @@ void handle_http_request(int fd, struct cache *cache)
  */
 int main(void)
 {
+
+    srand(time(NULL));
+
     int newfd;  // listen on sock_fd, new connection on newfd
     struct sockaddr_storage their_addr; // connector's address information
     char s[INET6_ADDRSTRLEN];
