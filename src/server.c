@@ -39,6 +39,8 @@
 #define SERVER_FILES "./serverfiles"
 #define SERVER_ROOT "./serverroot"
 
+#define UNUSED(x) (void)(x)
+
 /**
  * Send an HTTP response
  *
@@ -65,7 +67,7 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
             "Content-Type: %s\n"
             "\n"
             "%s",
-            header, content_length, content_type, body
+            header, content_length, content_type, (char *) body
         );
 
     // Send it all!
@@ -122,19 +124,35 @@ void resp_404(int fd)
     mime_type = mime_type_get(filepath);
 
     send_response(fd, "HTTP/1.1 404 NOT FOUND", mime_type, filedata->data, filedata->size);
-
+ 
     file_free(filedata);
 }
 
 /**
  * Read and return a file from disk or cache
  */
-// void get_file(int fd, struct cache *cache, char *request_path)
-// {
-//     ///////////////////
-//     // IMPLEMENT ME! //
-//     ///////////////////
-// }
+void get_file(int fd, struct cache *cache, char *request_path)
+{
+    UNUSED(cache);
+    ///////////////////
+    // IMPLEMENT ME! //
+    ///////////////////
+    char filepath[4096];
+    struct file_data *filedata; 
+    char *mime_type;
+
+    snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+    printf("get it: %s%s\n", SERVER_ROOT, request_path);
+    filedata = file_load(filepath);
+    mime_type = mime_type_get(filepath);
+
+    if (filedata == NULL) {
+        resp_404(fd);
+    } else {
+        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+        file_free(filedata);
+    }
+}
 
 // /**
 //  * Search for the end of the HTTP header
@@ -154,6 +172,7 @@ void resp_404(int fd)
  */
 void handle_http_request(int fd, struct cache *cache)
 {
+    
     const int request_buffer_size = 65536; // 64K
     char request[request_buffer_size];
 
@@ -172,19 +191,25 @@ void handle_http_request(int fd, struct cache *cache)
 
     // char *s = "GET /foobar HTTP/1.1\nHost: www.example.com\nConnection: close\nX-Header: whatever";
 
-    // char method[200];
-    // char path[8192];
 
-    // sscanf(request, "%s %s", method, path);
-
-    // printf("method: \"%s\"\n", method);
-    // printf("path: \"%s\"\n", path);
-
-    resp_404(fd);
+    // resp_404(fd);
 
     // Read the three components of the first request line
+    
+    char method[200];
+    char path[8192];
+
+    sscanf(request, "%s %s", method, path);
+
+    printf("method: \"%s\"\n", method);
+    printf("path: \"%s\"\n", path);
 
     // If GET, handle the get endpoints
+
+    if (strcmp(method, "GET") == 0) {
+        get_file(fd, cache, path);
+ 
+    } 
 
     //    Check if it's /d20 and handle that special case
     //    Otherwise serve the requested file by calling get_file()
