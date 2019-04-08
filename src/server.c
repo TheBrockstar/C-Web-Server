@@ -33,11 +33,14 @@
 #include "file.h"
 #include "mime.h"
 #include "cache.h"
+#include <time.h>
 
 #define PORT "3490"  // the port users will be connecting to
 
 #define SERVER_FILES "./serverfiles"
 #define SERVER_ROOT "./serverroot"
+
+#define UNUSED(x) (void)(x)
 
 /**
  * Send an HTTP response
@@ -59,8 +62,20 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
     // IMPLEMENT ME! //
     ///////////////////
 
+    int length = snprintf(response, max_response_size, 
+            "%s\n"
+            "Connection: close\n"
+            "Content-Length: %d\n"
+            "Content-Type: %s\n"
+            "\n",
+            header, content_length, content_type
+        );
+
+    memcpy(response + length, body, content_length);
+    length += content_length;
+
     // Send it all!
-    int rv = send(fd, response, response_length, 0);
+    int rv = send(fd, response, length, 0);
 
     if (rv < 0) {
         perror("send");
@@ -76,13 +91,16 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 void get_d20(int fd)
 {
     // Generate a random number between 1 and 20 inclusive
-    
+    char randstr[8];
+    int random = (rand() % 20) + 1;
+
+    sprintf(randstr, "%d", random);
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
 
     // Use send_response() to send it back as text/plain data
-
+    send_response(fd, "HTTP/1.1 200 OK", "text/plain", randstr, strlen(randstr));
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
@@ -110,7 +128,7 @@ void resp_404(int fd)
     mime_type = mime_type_get(filepath);
 
     send_response(fd, "HTTP/1.1 404 NOT FOUND", mime_type, filedata->data, filedata->size);
-
+ 
     file_free(filedata);
 }
 
@@ -122,26 +140,56 @@ void get_file(int fd, struct cache *cache, char *request_path)
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
+
+    struct cache_entry *ce = cache_get(cache, request_path);
+
+    if (ce != NULL) {
+        send_response(fd, "HTTP/1.1 200 OK", ce->content_type, ce->content, ce->content_length);
+
+    } else {
+        char filepath[4096];
+        struct file_data *filedata; 
+        char *mime_type;
+
+
+        snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, request_path);
+            
+        if (strcmp(request_path, "/") == 0){
+            snprintf(filepath, sizeof filepath, "%s%s", SERVER_ROOT, "/index.html"); 
+        }
+
+        filedata = file_load(filepath);
+        mime_type = mime_type_get(filepath);
+
+        if (filedata == NULL) {
+                resp_404(fd);
+        } else {
+            cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
+            send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+            file_free(filedata);
+        }
+    }
 }
 
-/**
- * Search for the end of the HTTP header
- * 
- * "Newlines" in HTTP can be \r\n (carriage return followed by newline) or \n
- * (newline) or \r (carriage return).
- */
-char *find_start_of_body(char *header)
-{
-    ///////////////////
-    // IMPLEMENT ME! // (Stretch)
-    ///////////////////
-}
+// /**
+//  * Search for the end of the HTTP header
+//  * 
+//  * "Newlines" in HTTP can be \r\n (carriage return followed by newline) or \n
+//  * (newline) or \r (carriage return).
+//  */
+// char *find_start_of_body(char *header)
+// {
+//     ///////////////////
+//     // IMPLEMENT ME! // (Stretch)
+//     ///////////////////
+// }
 
 /**
  * Handle HTTP request and send response
  */
 void handle_http_request(int fd, struct cache *cache)
 {
+    
     const int request_buffer_size = 65536; // 64K
     char request[request_buffer_size];
 
@@ -158,9 +206,30 @@ void handle_http_request(int fd, struct cache *cache)
     // IMPLEMENT ME! //
     ///////////////////
 
+    // char *s = "GET /foobar HTTP/1.1\nHost: www.example.com\nConnection: close\nX-Header: whatever";
+
+
+    // resp_404(fd);
+
     // Read the three components of the first request line
+    
+    char method[200];
+    char path[8192];
+
+    sscanf(request, "%s %s", method, path);
+
+    printf("method: \"%s\"\n", method);
+    printf("path: \"%s\"\n", path);
 
     // If GET, handle the get endpoints
+
+    if (strcmp(method, "GET") == 0) {
+        if (strcmp(path, "/d20") == 0 || strcmp(path, "/D20") == 0) {
+            get_d20(fd);
+        } else {
+            get_file(fd, cache, path);
+        }
+    } 
 
     //    Check if it's /d20 and handle that special case
     //    Otherwise serve the requested file by calling get_file()
@@ -174,6 +243,9 @@ void handle_http_request(int fd, struct cache *cache)
  */
 int main(void)
 {
+
+    srand(time(NULL));
+
     int newfd;  // listen on sock_fd, new connection on newfd
     struct sockaddr_storage their_addr; // connector's address information
     char s[INET6_ADDRSTRLEN];
